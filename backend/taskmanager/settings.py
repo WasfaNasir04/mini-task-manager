@@ -44,10 +44,17 @@ INSTALLED_APPS = [
     'authentication',          # Add authentication app
 ]
 
+# Custom User Model
+AUTH_USER_MODEL = 'authentication.User'
+
+# Rest Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
 
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development (not secure for production)
