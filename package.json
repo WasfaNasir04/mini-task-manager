@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@mui/x-date-pickers": "^7.28.3",
+    "react-error-boundary": "^5.0.0"
+  }
+}

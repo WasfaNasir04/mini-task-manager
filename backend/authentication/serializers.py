@@ -4,26 +4,29 @@ from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name')
+        read_only_fields = ('id',)
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'confirm_password')
-        extra_kwargs = {
-            'password': {'write_only': True},
-            'confirm_password': {'write_only': True}
-        }
+        fields = ('username', 'email', 'password', 'confirm_password')
 
     def validate(self, data):
         if data['password'] != data['confirm_password']:
-            raise serializers.ValidationError("Passwords do not match")
+            raise serializers.ValidationError("Passwords don't match")
         return data
 
     def create(self, validated_data):
         validated_data.pop('confirm_password')
-        return User.objects.create_user(**validated_data)
+        user = User.objects.create_user(**validated_data)
+        return user
 
 class UserLoginSerializer(serializers.Serializer):
     username = serializers.CharField()
