@@ -1,68 +1,74 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchNotifications, markAsRead } from '../../features/notifications/notificationsSlice';
-import { 
-  List, 
-  ListItem, 
-  ListItemText, 
-  Typography, 
-  IconButton,
-  Badge,
-  Menu,
-  MenuItem
-} from '@mui/material';
-import NotificationsIcon from '@mui/icons-material/Notifications';
+import { Box, List, ListItem, ListItemText, Typography, CircularProgress, IconButton } from '@mui/material';
+import { fetchNotifications, markNotificationAsRead } from '../../features/notifications/notificationsSlice';
+import { CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 
 const NotificationsList = () => {
   const dispatch = useDispatch();
-  const { notifications, unreadCount } = useSelector((state) => state.notifications);
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const { notifications, loading, error } = useSelector((state) => state.notifications);
 
   useEffect(() => {
     dispatch(fetchNotifications());
   }, [dispatch]);
 
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget);
+  const handleMarkAsRead = (notificationId) => {
+    dispatch(markNotificationAsRead(notificationId));
   };
 
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-  const handleMarkAsRead = async (notificationId) => {
-    await dispatch(markAsRead(notificationId));
-  };
+  if (error) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography color="error">Error loading notifications: {error}</Typography>
+      </Box>
+    );
+  }
+
+  if (!notifications || notifications.length === 0) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography>No notifications</Typography>
+      </Box>
+    );
+  }
 
   return (
-    <>
-      <IconButton color="inherit" onClick={handleClick}>
-        <Badge badgeContent={unreadCount} color="error">
-          <NotificationsIcon />
-        </Badge>
-      </IconButton>
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleClose}
-      >
-        {notifications.map((notification) => (
-          <MenuItem
-            key={notification.id}
-            onClick={() => handleMarkAsRead(notification.id)}
-            sx={{ 
-              bgcolor: notification.is_read ? 'inherit' : 'action.hover',
-              minWidth: 300
-            }}
-          >
-            <ListItemText
-              primary={notification.message}
-              secondary={new Date(notification.created_at).toLocaleString()}
-            />
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
+    <List>
+      {notifications.map((notification) => (
+        <ListItem
+          key={notification.id}
+          secondaryAction={
+            !notification.is_read && (
+              <IconButton
+                edge="end"
+                onClick={() => handleMarkAsRead(notification.id)}
+                color="primary"
+              >
+                <CheckCircleIcon />
+              </IconButton>
+            )
+          }
+          sx={{
+            bgcolor: notification.is_read ? 'background.paper' : 'action.hover',
+            mb: 1,
+            borderRadius: 1,
+          }}
+        >
+          <ListItemText
+            primary={notification.message}
+            secondary={new Date(notification.created_at).toLocaleString()}
+          />
+        </ListItem>
+      ))}
+    </List>
   );
 };
 

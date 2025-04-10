@@ -1,41 +1,58 @@
 import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
 import { login } from '../../features/auth/authSlice';
-import { TextField, Button, Box, Typography, Paper, Alert } from '@mui/material';
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Paper,
+  Alert,
+  CircularProgress
+} from '@mui/material';
 
 const LoginForm = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { loading, error: reduxError } = useSelector((state) => state.auth);
+  const [localError, setLocalError] = useState(null);
+
   const [formData, setFormData] = useState({
     username: '',
     password: '',
   });
-  const [error, setError] = useState(null);
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+    setLocalError(null); // Clear error when user types
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
+    setLocalError(null);
+
     try {
-      console.log('Attempting login with:', formData);
-      const result = await dispatch(login(formData)).unwrap();
-      console.log('Login response:', result);
-      if (result.access) {
+      const resultAction = await dispatch(login(formData)).unwrap();
+      if (resultAction.user) {
         navigate('/dashboard');
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      setError(
-        error.detail || 
-        error.message || 
-        (error.response?.data?.detail || 'Login failed. Please check your credentials.')
-      );
+    } catch (err) {
+      console.error('Login failed:', err);
+      if (err.message === "Failed to fetch" || err.message?.includes("NetworkError")) {
+        setLocalError("Cannot connect to server. Please check your connection and try again.");
+      } else if (err.detail) {
+        setLocalError(err.detail);
+      } else {
+        setLocalError("Login failed. Please check your credentials and try again.");
+      }
     }
   };
+
+  const error = localError || reduxError;
 
   return (
     <Box
@@ -44,17 +61,28 @@ const LoginForm = () => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
+        bgcolor: '#f5f5f5'
       }}
     >
-      <Paper elevation={3} sx={{ p: 4, maxWidth: 400, width: '100%' }}>
-        <Typography variant="h4" align="center" gutterBottom>
+      <Paper
+        elevation={3}
+        sx={{
+          p: 4,
+          width: '100%',
+          maxWidth: 400,
+          bgcolor: 'white'
+        }}
+      >
+        <Typography variant="h5" component="h1" gutterBottom align="center">
           Login
         </Typography>
+        
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
+
         <form onSubmit={handleSubmit}>
           <TextField
             fullWidth
@@ -64,6 +92,8 @@ const LoginForm = () => {
             onChange={handleChange}
             margin="normal"
             required
+            autoFocus
+            error={!!error}
           />
           <TextField
             fullWidth
@@ -74,14 +104,23 @@ const LoginForm = () => {
             onChange={handleChange}
             margin="normal"
             required
+            error={!!error}
           />
           <Button
             type="submit"
-            variant="contained"
             fullWidth
-            sx={{ mt: 2 }}
+            variant="contained"
+            sx={{
+              mt: 3,
+              mb: 2,
+              bgcolor: '#026AA7',
+              '&:hover': {
+                bgcolor: '#015585'
+              }
+            }}
+            disabled={loading}
           >
-            Login
+            {loading ? <CircularProgress size={24} /> : 'Login'}
           </Button>
         </form>
       </Paper>

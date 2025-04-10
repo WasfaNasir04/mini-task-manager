@@ -5,37 +5,58 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from .models import Team, Project, Task, Notification
 from .serializers import TeamSerializer, ProjectSerializer, TaskSerializer, UserSerializer, NotificationSerializer
-from .permissions import IsTeamAdmin, IsTeamMember, IsTeamAdminOrReadOnly, IsAssigneeOrTeamAdmin
+from .permissions import IsTeamAdmin, IsTeamMember, IsTeamAdminOnly, IsProjectAdmin, IsAssigneeOrTeamAdmin
 from django.contrib.auth import get_user_model
+from rest_framework.exceptions import PermissionDenied
 
 User = get_user_model()
 
 class TeamViewSet(viewsets.ModelViewSet):
     queryset = Team.objects.all()
     serializer_class = TeamSerializer
-    permission_classes = [IsTeamAdminOrReadOnly]
+    permission_classes = [IsTeamAdminOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
-    @action(detail=True, methods=['post'], permission_classes=[IsTeamAdmin])
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'ADMIN':
+            return Team.objects.all()
+        return Team.objects.filter(members=user)
+
+    @action(detail=True, methods=['post'])
     def add_member(self, request, pk=None):
         team = self.get_object()
         user_id = request.data.get('user_id')
         user = get_object_or_404(User, id=user_id)
+        
+        if request.user.role != 'ADMIN':
+            return Response(
+                {'error': 'Only admins can add members to teams'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
         team.members.add(user)
         return Response({'status': 'member added'})
 
-    @action(detail=True, methods=['post'], permission_classes=[IsTeamAdmin])
+    @action(detail=True, methods=['post'])
     def remove_member(self, request, pk=None):
         team = self.get_object()
         user_id = request.data.get('user_id')
         user = get_object_or_404(User, id=user_id)
+        
+        if request.user.role != 'ADMIN':
+            return Response(
+                {'error': 'Only admins can remove members from teams'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
         team.members.remove(user)
         return Response({'status': 'member removed'})
 
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
-    permission_classes = [IsTeamAdminOrReadOnly]
+    permission_classes = [IsProjectAdmin]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
@@ -45,6 +66,30 @@ class ProjectViewSet(viewsets.ModelViewSet):
             return Project.objects.all()
         return Project.objects.filter(team__members=user)
 
+    def perform_create(self, serializer):
+        if self.request.user.role != 'ADMIN':
+            raise PermissionDenied('Only admins can create projects')
+        team = serializer.validated_data['team']
+        if not team.members.filter(id=self.request.user.id).exists():
+            raise PermissionDenied('You can only create projects for teams you are a member of')
+        serializer.save()
+
+    @action(detail=True, methods=['post'])
+    def assign_member(self, request, pk=None):
+        project = self.get_object()
+        user_id = request.data.get('user_id')
+        user = get_object_or_404(User, id=user_id)
+        
+        # Only admins can assign members to projects
+        if request.user.role != 'ADMIN':
+            return Response(
+                {'error': 'Only admins can assign members to projects'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        project.assigned_members.add(user)
+        return Response({'status': 'member assigned'})
+
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     permission_classes = [IsTeamMember]
@@ -53,24 +98,20 @@ class TaskViewSet(viewsets.ModelViewSet):
     ordering_fields = ['deadline', 'priority']
 
     def get_queryset(self):
-        queryset = Task.objects.all()
+        queryset = Task.objects.filter(project__team__members=self.request.user)
         
-        # Filter by assignee
         assignee = self.request.query_params.get('assignee', None)
         if assignee:
             queryset = queryset.filter(assignee__id=assignee)
             
-        # Filter by priority
         priority = self.request.query_params.get('priority', None)
         if priority:
             queryset = queryset.filter(priority=priority)
             
-        # Filter by due date
         due_date = self.request.query_params.get('due_date', None)
         if due_date:
             queryset = queryset.filter(deadline__date=due_date)
             
-        # Filter by status
         status = self.request.query_params.get('status', None)
         if status:
             queryset = queryset.filter(status=status)
@@ -78,6 +119,15 @@ class TaskViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
+        project = serializer.validated_data['project']
+        assignee = serializer.validated_data['assignee']
+        
+        # Ensure assignee is a member of the project's team
+        if not project.team.members.filter(id=assignee.id).exists():
+            raise serializers.ValidationError(
+                {'assignee': 'Assignee must be a member of the project team'}
+            )
+        
         task = serializer.save()
         # Create notification for task assignment
         Notification.objects.create(

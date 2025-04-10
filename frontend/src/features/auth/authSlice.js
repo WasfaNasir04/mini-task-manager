@@ -5,15 +5,14 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      console.log('Sending login request with:', credentials);
       const response = await authApi.login(credentials);
-      console.log('Login response received:', response.data);
+      console.log('Login response:', response.data); // Debug log
       localStorage.setItem('access_token', response.data.access);
       localStorage.setItem('refresh_token', response.data.refresh);
       return response.data;
     } catch (error) {
-      console.error('Login error in authSlice:', error.response?.data || error);
-      return rejectWithValue(error.response?.data || error.message || 'Login failed');
+      console.error('Login error:', error.response?.data || error);
+      return rejectWithValue(error.response?.data || { detail: 'Login failed' });
     }
   }
 );
@@ -45,8 +44,8 @@ export const register = createAsyncThunk(
 
 const initialState = {
   user: null,
-  token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
+  token: localStorage.getItem('access_token'),
+  isAuthenticated: !!localStorage.getItem('access_token'),
   loading: false,
   error: null,
 };
@@ -57,9 +56,12 @@ const authSlice = createSlice({
   reducers: {
     logout: (state) => {
       state.user = null;
+      state.token = null;
       state.isAuthenticated = false;
       state.loading = false;
       state.error = null;
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
     },
     clearError: (state) => {
       state.error = null;
@@ -75,14 +77,19 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.token = action.payload.access;
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = action.payload?.detail || 'Login failed';
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
+        state.token = null;
         state.isAuthenticated = false;
         state.loading = false;
         state.error = null;

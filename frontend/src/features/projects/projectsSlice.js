@@ -3,9 +3,13 @@ import { projectsApi } from '../../services/api';
 
 export const fetchProjects = createAsyncThunk(
   'projects/fetchProjects',
-  async () => {
-    const response = await projectsApi.getProjects();
-    return response.data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await projectsApi.getAll();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || 'Failed to fetch projects');
+    }
   }
 );
 
@@ -13,27 +17,34 @@ export const createProject = createAsyncThunk(
   'projects/createProject',
   async (projectData, { rejectWithValue }) => {
     try {
-      const response = await projectsApi.createProject(projectData);
+      const response = await projectsApi.create(projectData);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.response?.data || 'Failed to create project');
     }
   }
 );
 
-const initialState = {
-  items: [],
-  status: 'idle',
-  error: null,
-};
+export const assignProjectMember = createAsyncThunk(
+  'projects/assignMember',
+  async ({ projectId, userId }, { rejectWithValue }) => {
+    try {
+      const response = await projectsApi.assignMember(projectId, userId);
+      return { projectId, userId, ...response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || 'Failed to assign member');
+    }
+  }
+);
 
 const projectsSlice = createSlice({
   name: 'projects',
-  initialState,
+  initialState: {
+    projects: [],
+    status: 'idle',
+    error: null,
+  },
   reducers: {
-    setCurrentProject: (state, action) => {
-      state.currentProject = action.payload;
-    },
     clearError: (state) => {
       state.error = null;
     },
@@ -42,29 +53,27 @@ const projectsSlice = createSlice({
     builder
       .addCase(fetchProjects.pending, (state) => {
         state.status = 'loading';
+        state.error = null;
       })
       .addCase(fetchProjects.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.items = action.payload;
+        state.projects = action.payload;
       })
       .addCase(fetchProjects.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.error.message;
-      })
-      .addCase(createProject.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+        state.error = action.payload;
       })
       .addCase(createProject.fulfilled, (state, action) => {
-        state.loading = false;
-        state.items.push(action.payload);
+        state.projects.push(action.payload);
       })
-      .addCase(createProject.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+      .addCase(assignProjectMember.fulfilled, (state, action) => {
+        const project = state.projects.find(p => p.id === action.payload.projectId);
+        if (project && action.payload.user) {
+          project.assigned_members.push(action.payload.user);
+        }
       });
   },
 });
 
-export const { setCurrentProject, clearError } = projectsSlice.actions;
+export const { clearError } = projectsSlice.actions;
 export default projectsSlice.reducer;

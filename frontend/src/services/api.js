@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
+// Create axios instance
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -9,7 +10,7 @@ const api = axios.create({
   },
 });
 
-// Add auth token to requests
+// Add token to requests
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
@@ -18,90 +19,90 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Comment out the refresh token interceptor for now
-/*
+// Add response interceptor for token refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // If error is 401 and we haven't tried to refresh token yet
+    if (error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        const response = await axios.post(`${API_URL}/token/refresh/`, {
-          refresh: refreshToken,
+        const refreshToken = localStorage.getItem('refresh_token');
+        const response = await axios.post(`${API_URL}/auth/token/refresh/`, {
+          refresh: refreshToken
         });
 
         const { access } = response.data;
-        localStorage.setItem('token', access);
+        localStorage.setItem('access_token', access);
 
+        // Update the original request with new token
         originalRequest.headers.Authorization = `Bearer ${access}`;
         return api(originalRequest);
-      } catch (error) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
+      } catch (refreshError) {
+        // If refresh token is invalid, logout user
+        authApi.logout();
         window.location.href = '/login';
-        return Promise.reject(error);
+        return Promise.reject(refreshError);
       }
     }
 
     return Promise.reject(error);
   }
 );
-*/
 
+// Authentication API
 export const authApi = {
-  login: (credentials) => api.post('/auth/login/', {
-    username: credentials.username,
-    password: credentials.password
-  }),
+  login: (credentials) => api.post('/auth/login/', credentials),
   register: (userData) => api.post('/auth/register/', userData),
-  refreshToken: (refresh) => api.post('/token/refresh/', { refresh }),
+  logout: () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+  },
 };
 
+// Teams API
 export const teamsApi = {
-  getTeams: () => api.get('/teams/'),
-  createTeam: (teamData) => api.post('/teams/', teamData),
-  getTeam: (teamId) => api.get(`/teams/${teamId}/`),
-  updateTeam: (teamId, teamData) => api.put(`/teams/${teamId}/`, teamData),
-  deleteTeam: (teamId) => api.delete(`/teams/${teamId}/`),
+  getAll: () => api.get('/teams/'),
+  getOne: (id) => api.get(`/teams/${id}/`),
+  create: (data) => api.post('/teams/', data),
+  update: (id, data) => api.put(`/teams/${id}/`, data),
+  delete: (id) => api.delete(`/teams/${id}/`),
   addMember: (teamId, userId) => api.post(`/teams/${teamId}/add_member/`, { user_id: userId }),
   removeMember: (teamId, userId) => api.post(`/teams/${teamId}/remove_member/`, { user_id: userId }),
 };
 
+// Projects API
 export const projectsApi = {
-  getProjects: () => api.get('/projects/'),
-  createProject: (projectData) => api.post('/projects/', projectData),
-  getProject: (projectId) => api.get(`/projects/${projectId}/`),
-  updateProject: (projectId, projectData) => api.put(`/projects/${projectId}/`, projectData),
-  deleteProject: (projectId) => api.delete(`/projects/${projectId}/`),
-  getTeamProjects: (teamId) => api.get(`/projects/?team=${teamId}`),
+  getAll: () => api.get('/projects/'),
+  getOne: (id) => api.get(`/projects/${id}/`),
+  create: (data) => api.post('/projects/', data),
+  update: (id, data) => api.put(`/projects/${id}/`, data),
+  delete: (id) => api.delete(`/projects/${id}/`),
+  assignMember: (projectId, userId) => api.post(`/projects/${projectId}/assign_member/`, { user_id: userId }),
 };
 
+// Tasks API
 export const tasksApi = {
-  getTasks: (params = {}) => api.get('/tasks/', { params }),
-  createTask: (taskData) => api.post('/tasks/', taskData),
-  getTask: (taskId) => api.get(`/tasks/${taskId}/`),
-  updateTask: (taskId, taskData) => api.put(`/tasks/${taskId}/`, taskData),
-  deleteTask: (taskId) => api.delete(`/tasks/${taskId}/`),
-  updateTaskStatus: (taskId, status) => api.patch(`/tasks/${taskId}/update_status/`, { status }),
-  getProjectTasks: (projectId) => api.get(`/tasks/?project=${projectId}`),
-  getAssigneeTasks: (assigneeId) => api.get(`/tasks/?assignee=${assigneeId}`),
+  getAll: () => api.get('/tasks/'),
+  getOne: (id) => api.get(`/tasks/${id}/`),
+  create: (data) => api.post('/tasks/', data),
+  update: (id, data) => api.put(`/tasks/${id}/`, data),
+  delete: (id) => api.delete(`/tasks/${id}/`),
+  updateStatus: (id, status) => api.patch(`/tasks/${id}/update_status/`, { status }),
 };
 
+// Notifications API
 export const notificationsApi = {
-  getNotifications: () => api.get('/notifications/'),
-  markAsRead: (notificationId) => api.post(`/notifications/${notificationId}/mark_as_read/`),
-  getUnreadNotifications: () => api.get('/notifications/?is_read=false'),
+  getAll: () => api.get('/notifications/'),
+  markAsRead: (id) => api.post(`/notifications/${id}/mark_as_read/`),
 };
 
 export default api;

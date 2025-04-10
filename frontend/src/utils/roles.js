@@ -1,12 +1,8 @@
+export const isAdmin = (role) => role === 'ADMIN';
+export const isMember = (role) => role === 'MEMBER';
+export const hasRole = (userRole, requiredRole) => userRole === requiredRole;
+
 export const ROLES = {
   ADMIN: 'ADMIN',
-  MEMBER: 'MEMBER',
-};
-
-export const hasRole = (user, role) => {
-  return user?.role === role;
-};
-
-export const isAdmin = (user) => {
-  return hasRole(user, ROLES.ADMIN);
+  MEMBER: 'MEMBER'
 };

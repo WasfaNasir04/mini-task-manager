@@ -1,151 +1,160 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createTask } from '../../features/tasks/tasksSlice';
-import { fetchProjects } from '../../features/projects/projectsSlice';
 import { 
   TextField, 
   Button, 
   Box, 
-  Typography, 
-  Paper,
-  Select,
-  MenuItem,
   FormControl,
   InputLabel,
-  Grid,
-  CircularProgress
+  Select,
+  MenuItem,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
+import { teamsApi } from '../../services/teamsApi';
 
-const CreateTaskForm = () => {
+const CreateTaskForm = ({ onClose, projectId }) => {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [priority, setPriority] = useState('Medium');
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   const dispatch = useDispatch();
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    status: 'todo',
-    priority: 'medium',
-    assigned_to: '',
-    project: '',
-    due_date: null,
-  });
+  const project = useSelector(state => state.projects.projects.find(p => p.id === projectId));
 
-  // Get projects from Redux store
-  const { items: projects, status: projectsStatus } = useSelector((state) => state.projects);
-
-  // Initialize projects if not already loaded
   useEffect(() => {
-    if (projectsStatus === 'idle') {
-      dispatch(fetchProjects());
-    }
-  }, [projectsStatus, dispatch]);
+    const fetchTeamMembers = async () => {
+      try {
+        if (project?.team?.id) {
+          const response = await teamsApi.getOne(project.team.id);
+          setTeamMembers(response.data.members || []);
+        }
+      } catch (error) {
+        console.error('Error fetching team members:', error);
+        setError('Failed to fetch team members');
+      }
+    };
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+    fetchTeamMembers();
+  }, [project]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(createTask(formData));
-    setFormData({
-      title: '',
-      description: '',
-      status: 'todo',
-      priority: 'medium',
-      assigned_to: '',
-      project: '',
-      due_date: null,
-    });
+    setLoading(true);
+    setError(null);
+
+    try {
+      const taskData = {
+        title,
+        description,
+        deadline,
+        assignee_id: assigneeId,
+        priority,
+        project_id: projectId,
+        status: 'To Do'
+      };
+
+      await dispatch(createTask(taskData)).unwrap();
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to create task');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (projectsStatus === 'loading') {
-    return (
-      <Box display="flex" justifyContent="center" p={3}>
-        <CircularProgress />
-      </Box>
-    );
+  if (!project) {
+    return <div>Loading project...</div>;
   }
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
       <TextField
-        fullWidth
-        label="Title"
-        name="title"
-        value={formData.title}
-        onChange={handleChange}
         margin="normal"
         required
+        fullWidth
+        id="title"
+        label="Task Title"
+        name="title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
       />
       <TextField
-        fullWidth
-        label="Description"
-        name="description"
-        value={formData.description}
-        onChange={handleChange}
         margin="normal"
+        required
+        fullWidth
         multiline
         rows={4}
+        id="description"
+        label="Description"
+        name="description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+      />
+      <TextField
+        margin="normal"
+        required
+        fullWidth
+        type="datetime-local"
+        id="deadline"
+        label="Deadline"
+        name="deadline"
+        InputLabelProps={{ shrink: true }}
+        value={deadline}
+        onChange={(e) => setDeadline(e.target.value)}
       />
       <FormControl fullWidth margin="normal">
-        <InputLabel>Status</InputLabel>
+        <InputLabel id="assignee-label">Assignee</InputLabel>
         <Select
-          name="status"
-          value={formData.status}
-          onChange={handleChange}
-          label="Status"
+          labelId="assignee-label"
+          id="assignee"
+          value={assigneeId}
+          label="Assignee"
+          onChange={(e) => setAssigneeId(e.target.value)}
+          required
         >
-          <MenuItem value="todo">To Do</MenuItem>
-          <MenuItem value="in_progress">In Progress</MenuItem>
-          <MenuItem value="done">Done</MenuItem>
-        </Select>
-      </FormControl>
-      <FormControl fullWidth margin="normal">
-        <InputLabel>Priority</InputLabel>
-        <Select
-          name="priority"
-          value={formData.priority}
-          onChange={handleChange}
-          label="Priority"
-        >
-          <MenuItem value="low">Low</MenuItem>
-          <MenuItem value="medium">Medium</MenuItem>
-          <MenuItem value="high">High</MenuItem>
-        </Select>
-      </FormControl>
-      <FormControl fullWidth margin="normal">
-        <InputLabel>Project</InputLabel>
-        <Select
-          name="project"
-          value={formData.project}
-          onChange={handleChange}
-          label="Project"
-        >
-          {projects && projects.map((project) => (
-            <MenuItem key={project.id} value={project.id}>
-              {project.name}
+          {teamMembers.map((member) => (
+            <MenuItem key={member.id} value={member.id}>
+              {member.username} ({member.role})
             </MenuItem>
           ))}
         </Select>
       </FormControl>
-      <TextField
-        fullWidth
-        label="Due Date"
-        type="datetime-local"
-        name="due_date"
-        value={formData.due_date}
-        onChange={handleChange}
-        margin="normal"
-        InputLabelProps={{
-          shrink: true,
-        }}
-      />
-      <Button
-        type="submit"
-        variant="contained"
-        fullWidth
-        sx={{ mt: 2 }}
-      >
-        Create Task
-      </Button>
+      <FormControl fullWidth margin="normal">
+        <InputLabel id="priority-label">Priority</InputLabel>
+        <Select
+          labelId="priority-label"
+          id="priority"
+          value={priority}
+          label="Priority"
+          onChange={(e) => setPriority(e.target.value)}
+          required
+        >
+          <MenuItem value="Low">Low</MenuItem>
+          <MenuItem value="Medium">Medium</MenuItem>
+          <MenuItem value="High">High</MenuItem>
+        </Select>
+      </FormControl>
+      {error && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      )}
+      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={loading}
+        >
+          {loading ? <CircularProgress size={24} /> : 'Create Task'}
+        </Button>
+      </Box>
     </Box>
   );
 };

@@ -8,26 +8,25 @@ export const fetchNotifications = createAsyncThunk(
       const response = await notificationsApi.getNotifications();
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
 
-export const markAsRead = createAsyncThunk(
+export const markNotificationAsRead = createAsyncThunk(
   'notifications/markAsRead',
   async (notificationId, { rejectWithValue }) => {
     try {
-      await notificationsApi.markAsRead(notificationId);
-      return notificationId;
+      const response = await notificationsApi.markAsRead(notificationId);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
 
 const initialState = {
   notifications: [],
-  unreadCount: 0,
   loading: false,
   error: null,
 };
@@ -36,26 +35,35 @@ const notificationsSlice = createSlice({
   name: 'notifications',
   initialState,
   reducers: {
-    addNotification: (state, action) => {
-      state.notifications.unshift(action.payload);
-      state.unreadCount += 1;
+    clearNotifications: (state) => {
+      state.notifications = [];
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchNotifications.fulfilled, (state, action) => {
-        state.notifications = action.payload;
-        state.unreadCount = action.payload.filter(n => !n.is_read).length;
+      .addCase(fetchNotifications.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
-      .addCase(markAsRead.fulfilled, (state, action) => {
-        const notification = state.notifications.find(n => n.id === action.payload);
-        if (notification) {
-          notification.is_read = true;
-          state.unreadCount -= 1;
+      .addCase(fetchNotifications.fulfilled, (state, action) => {
+        state.loading = false;
+        state.notifications = action.payload;
+      })
+      .addCase(fetchNotifications.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(markNotificationAsRead.fulfilled, (state, action) => {
+        const index = state.notifications.findIndex(
+          (notification) => notification.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.notifications[index] = action.payload;
         }
       });
   },
 });
 
-export const { addNotification } = notificationsSlice.actions;
+export const { clearNotifications } = notificationsSlice.actions;
 export default notificationsSlice.reducer;

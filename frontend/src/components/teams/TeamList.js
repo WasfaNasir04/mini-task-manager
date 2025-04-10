@@ -1,19 +1,23 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTeams } from '../../features/teams/teamsSlice';
-import { 
-  List, 
-  ListItem, 
-  ListItemText, 
-  Typography, 
-  Paper,
+import { isAdmin } from '../../utils/roles';
+import {
+  Box,
+  Card,
+  CardContent,
+  CardActions,
+  Typography,
+  Button,
   CircularProgress,
-  Box
+  Alert,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 
-const TeamList = () => {
+const TeamList = ({ onCreateProject }) => {
   const dispatch = useDispatch();
   const { items: teams, status, error } = useSelector((state) => state.teams);
+  const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
     if (status === 'idle') {
@@ -29,35 +33,57 @@ const TeamList = () => {
     );
   }
 
-  if (error) {
+  if (status === 'failed') {
     return (
-      <Typography color="error" align="center">
-        Error: {error}
-      </Typography>
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {error || 'Failed to load teams'}
+      </Alert>
     );
   }
 
   if (!teams || teams.length === 0) {
     return (
-      <Typography align="center">
-        No teams found. Create your first team!
-      </Typography>
+      <Box p={3}>
+        <Typography variant="body1" color="textSecondary">
+          No teams found. Create a team to get started.
+        </Typography>
+      </Box>
     );
   }
 
   return (
-    <Paper elevation={2} sx={{ mt: 2 }}>
-      <List>
-        {teams.map((team) => (
-          <ListItem key={team.id}>
-            <ListItemText
-              primary={team.name}
-              secondary={`Members: ${team.members?.length || 0}`}
-            />
-          </ListItem>
-        ))}
-      </List>
-    </Paper>
+    <Box>
+      {teams.map((team) => (
+        <Card key={team.id} sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="h6" component="h2">
+              {team.name}
+            </Typography>
+            <Typography color="textSecondary">
+              Members: {team.members?.length || 0}
+            </Typography>
+          </CardContent>
+          <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+            {isAdmin(user?.role) && (
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => onCreateProject(team.id)}
+                sx={{ 
+                  backgroundColor: '#026AA7',
+                  '&:hover': {
+                    backgroundColor: '#015585'
+                  }
+                }}
+              >
+                Create Project
+              </Button>
+            )}
+          </CardActions>
+        </Card>
+      ))}
+    </Box>
   );
 };
 

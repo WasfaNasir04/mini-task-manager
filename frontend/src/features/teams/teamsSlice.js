@@ -4,7 +4,7 @@ import { teamsApi } from '../../services/api';
 export const fetchTeams = createAsyncThunk(
   'teams/fetchTeams',
   async () => {
-    const response = await teamsApi.getTeams();
+    const response = await teamsApi.getAll();
     return response.data;
   }
 );
@@ -13,10 +13,15 @@ export const createTeam = createAsyncThunk(
   'teams/createTeam',
   async (teamData, { rejectWithValue }) => {
     try {
-      const response = await teamsApi.createTeam(teamData);
+      console.log('Creating team with data:', teamData);
+      const token = localStorage.getItem('access_token');
+      console.log('Current access token:', token);
+      const response = await teamsApi.create(teamData);
+      console.log('Team creation response:', response.data);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      console.error('Error creating team:', error.response?.data || error);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
@@ -25,7 +30,7 @@ export const inviteMember = createAsyncThunk(
   'teams/inviteMember',
   async ({ teamId, email }, { rejectWithValue }) => {
     try {
-      const response = await teamsApi.inviteMember(teamId, email);
+      const response = await teamsApi.addMember(teamId, email);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response.data);

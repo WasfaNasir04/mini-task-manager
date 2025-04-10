@@ -1,44 +1,70 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProjects, setCurrentProject } from '../../features/projects/projectsSlice';
-import { List, ListItem, ListItemText, Box, Typography } from '@mui/material';
+import { fetchProjects } from '../../features/projects/projectsSlice';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  CircularProgress,
+  Alert,
+} from '@mui/material';
 
 const ProjectList = ({ teamId }) => {
   const dispatch = useDispatch();
-  const { projects, loading, error } = useSelector((state) => state.projects);
+  const { projects, status, error } = useSelector((state) => state.projects);
 
   useEffect(() => {
-    if (teamId) {
-      dispatch(fetchProjects(teamId));
-    }
-  }, [dispatch, teamId]);
+    dispatch(fetchProjects());
+  }, [dispatch]);
 
-  const handleProjectSelect = (project) => {
-    dispatch(setCurrentProject(project));
-  };
+  if (status === 'loading') {
+    return (
+      <Box display="flex" justifyContent="center" p={3}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-  if (loading) return <Typography>Loading projects...</Typography>;
-  if (error) return <Typography color="error">Error: {error}</Typography>;
+  if (status === 'failed') {
+    return (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {error || 'Failed to load projects'}
+      </Alert>
+    );
+  }
+
+  const teamProjects = teamId 
+    ? projects.filter(project => project.team.id === teamId)
+    : projects;
+
+  if (teamProjects.length === 0) {
+    return (
+      <Box p={3}>
+        <Typography variant="body1" color="textSecondary">
+          No projects found.
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>
-        Projects
-      </Typography>
-      <List>
-        {projects.map((project) => (
-          <ListItem
-            key={project.id}
-            button
-            onClick={() => handleProjectSelect(project)}
-          >
-            <ListItemText
-              primary={project.name}
-              secondary={project.description}
-            />
-          </ListItem>
-        ))}
-      </List>
+      {teamProjects.map((project) => (
+        <Card key={project.id} sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="h6" component="h3">
+              {project.name}
+            </Typography>
+            <Typography color="textSecondary" variant="body2">
+              {project.description}
+            </Typography>
+            <Typography color="textSecondary" variant="body2" sx={{ mt: 1 }}>
+              Team: {project.team.name}
+            </Typography>
+          </CardContent>
+        </Card>
+      ))}
     </Box>
   );
 };

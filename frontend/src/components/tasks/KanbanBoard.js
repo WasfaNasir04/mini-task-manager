@@ -1,59 +1,74 @@
 import React, { useEffect } from 'react';
-import { DragDropContext, Droppable } from 'react-beautiful-dnd';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTasks, updateTaskStatus } from '../../features/tasks/tasksSlice';
-import { Box, Paper, Typography } from '@mui/material';
 import TaskColumn from './TaskColumn';
+import {
+  Box,
+  Grid,
+  CircularProgress,
+  Alert,
+} from '@mui/material';
 
-const statuses = ['TODO', 'IN_PROGRESS', 'DONE'];
-
-const KanbanBoard = ({ projectId }) => {
+const KanbanBoard = () => {
   const dispatch = useDispatch();
-  const { tasks, loading, error } = useSelector((state) => state.tasks);
+  const { tasks, status, error } = useSelector((state) => state.tasks);
 
   useEffect(() => {
-    if (projectId) {
-      dispatch(fetchTasks(projectId));
+    dispatch(fetchTasks());
+  }, [dispatch]);
+
+  const handleTaskMove = async (taskId, newStatus) => {
+    try {
+      await dispatch(updateTaskStatus({ taskId, status: newStatus })).unwrap();
+    } catch (err) {
+      console.error('Failed to update task status:', err);
     }
-  }, [dispatch, projectId]);
-
-  const handleDragEnd = (result) => {
-    if (!result.destination) return;
-
-    const taskId = result.draggableId;
-    const newStatus = result.destination.droppableId;
-    
-    dispatch(updateTaskStatus({ taskId, status: newStatus }));
   };
 
-  if (loading) return <Typography>Loading tasks...</Typography>;
-  if (error) return <Typography color="error">Error: {error}</Typography>;
+  if (status === 'loading') {
+    return (
+      <Box display="flex" justifyContent="center" p={3}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (status === 'failed') {
+    return (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {error || 'Failed to load tasks'}
+      </Alert>
+    );
+  }
+
+  const todoTasks = tasks.filter(task => task.status === 'To Do');
+  const inProgressTasks = tasks.filter(task => task.status === 'In Progress');
+  const doneTasks = tasks.filter(task => task.status === 'Done');
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <Box sx={{ display: 'flex', gap: 2, p: 2 }}>
-        {statuses.map((status) => (
-          <Droppable key={status} droppableId={status}>
-            {(provided) => (
-              <Paper
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                sx={{ flex: 1, p: 2 }}
-              >
-                <Typography variant="h6" gutterBottom>
-                  {status.replace('_', ' ')}
-                </Typography>
-                <TaskColumn
-                  tasks={tasks.filter(task => task.status === status)}
-                  status={status}
-                />
-                {provided.placeholder}
-              </Paper>
-            )}
-          </Droppable>
-        ))}
-      </Box>
-    </DragDropContext>
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={4}>
+        <TaskColumn
+          title="To Do"
+          tasks={todoTasks}
+          onTaskMove={handleTaskMove}
+        />
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <TaskColumn
+          title="In Progress"
+          tasks={inProgressTasks}
+          onTaskMove={handleTaskMove}
+        />
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <TaskColumn
+          title="Done"
+          tasks={doneTasks}
+          onTaskMove={handleTaskMove}
+        />
+      </Grid>
+    </Grid>
   );
 };
 

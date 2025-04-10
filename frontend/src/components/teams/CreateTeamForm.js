@@ -1,85 +1,71 @@
 import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { createTeam } from '../../features/teams/teamsSlice';
+import { useDispatch } from 'react-redux';
 import {
   Box,
-  Button,
   TextField,
-  Dialog,
+  Button,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Alert
+  Typography,
 } from '@mui/material';
+import { createTeam } from '../../features/teams/teamsSlice';
 
-const CreateTeamForm = ({ open, onClose }) => {
+const CreateTeamForm = ({ onClose }) => {
   const dispatch = useDispatch();
-  const { loading, error } = useSelector((state) => state.teams);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: ''
-  });
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const [teamName, setTeamName] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!teamName.trim()) {
+      setError('Team name is required');
+      return;
+    }
+
     try {
-      await dispatch(createTeam(formData)).unwrap();
+      await dispatch(createTeam({ name: teamName })).unwrap();
+      setTeamName('');
+      setError('');
       onClose();
-      setFormData({ name: '', description: '' });
-    } catch (error) {
-      console.error('Error creating team:', error);
+    } catch (err) {
+      setError(err.message || 'Failed to create team');
     }
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Create New Team</DialogTitle>
+    <Box>
+      <DialogTitle>
+        <Typography variant="h6">Create New Team</Typography>
+      </DialogTitle>
       <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {typeof error === 'string' ? error : error.detail || 'Failed to create team'}
-          </Alert>
-        )}
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
           <TextField
             fullWidth
             label="Team Name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
+            value={teamName}
+            onChange={(e) => setTeamName(e.target.value)}
+            error={!!error}
+            helperText={error}
+            autoFocus
             margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="Description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            multiline
-            rows={4}
-            margin="normal"
+            variant="outlined"
           />
         </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button 
-          onClick={handleSubmit} 
-          variant="contained" 
-          disabled={loading}
+      <DialogActions sx={{ p: 2 }}>
+        <Button onClick={onClose} color="inherit">
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          sx={{ backgroundColor: '#026AA7' }}
         >
-          {loading ? 'Creating...' : 'Create Team'}
+          Create Team
         </Button>
       </DialogActions>
-    </Dialog>
+    </Box>
   );
 };
 
