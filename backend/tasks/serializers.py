@@ -24,17 +24,19 @@ class ProjectSerializer(serializers.ModelSerializer):
         source='team',
         write_only=True
     )
+    assigned_members = UserSerializer(many=True, read_only=True)
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'description', 'team', 'team_id']
+        fields = ['id', 'name', 'description', 'team', 'team_id', 'assigned_members']
 
 class TaskSerializer(serializers.ModelSerializer):
     assignee = UserSerializer(read_only=True)
     assignee_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         source='assignee',
-        write_only=True
+        write_only=True,
+        required=False
     )
     project = ProjectSerializer(read_only=True)
     project_id = serializers.PrimaryKeyRelatedField(

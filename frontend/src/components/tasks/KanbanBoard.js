@@ -41,30 +41,30 @@ const KanbanBoard = () => {
     );
   }
 
-  const todoTasks = tasks.filter(task => task.status === 'To Do');
-  const inProgressTasks = tasks.filter(task => task.status === 'In Progress');
-  const doneTasks = tasks.filter(task => task.status === 'Done');
+  const todoTasks = tasks.filter((task) => task.status === 'To Do');
+  const inProgressTasks = tasks.filter((task) => task.status === 'In Progress');
+  const doneTasks = tasks.filter((task) => task.status === 'Done');
 
   return (
     <Grid container spacing={2}>
       <Grid item xs={12} md={4}>
         <TaskColumn
-          title="To Do"
           tasks={todoTasks}
+          status="To Do"
           onTaskMove={handleTaskMove}
         />
       </Grid>
       <Grid item xs={12} md={4}>
         <TaskColumn
-          title="In Progress"
           tasks={inProgressTasks}
+          status="In Progress"
           onTaskMove={handleTaskMove}
         />
       </Grid>
       <Grid item xs={12} md={4}>
         <TaskColumn
-          title="Done"
           tasks={doneTasks}
+          status="Done"
           onTaskMove={handleTaskMove}
         />
       </Grid>

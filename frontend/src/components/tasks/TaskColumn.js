@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paper, Card, CardContent, Typography, Box } from '@mui/material';
+import { Paper, Card, CardContent, Typography, Box, Chip, List, ListItem, ListItemText } from '@mui/material';
 
 const TaskColumn = ({ tasks, status, onTaskMove }) => {
   const handleDragStart = (e, taskId) => {
@@ -26,10 +26,10 @@ const TaskColumn = ({ tasks, status, onTaskMove }) => {
         p: 2,
         minHeight: 400,
         backgroundColor: '#f5f5f5',
-        borderRadius: 2
+        borderRadius: 2,
       }}
     >
-      <Typography variant="h6" sx={{ mb: 2 }}>
+      <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#026AA7' }}>
         {status}
       </Typography>
       {tasks.map((task) => (
@@ -49,17 +49,38 @@ const TaskColumn = ({ tasks, status, onTaskMove }) => {
             <Typography variant="h6" gutterBottom>
               {task.title}
             </Typography>
-            <Typography color="textSecondary" gutterBottom>
-              {task.description}
-            </Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-              <Typography variant="body2" color="textSecondary">
-                Assignee: {task.assignee?.username || 'Unassigned'}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
-              </Typography>
-            </Box>
+            <List dense>
+              <ListItem>
+                <ListItemText primary="Description" secondary={task.description} />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Deadline"
+                  secondary={task.deadline ? new Date(task.deadline).toLocaleString() : 'No due date'}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Priority"
+                  secondary={
+                    <Chip
+                      label={task.priority}
+                      size="small"
+                      color={
+                        task.priority === 'High' ? 'error' :
+                        task.priority === 'Medium' ? 'warning' : 'success'
+                      }
+                    />
+                  }
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Assignee"
+                  secondary={task.assignee?.username || 'Unassigned'}
+                />
+              </ListItem>
+            </List>
           </CardContent>
         </Card>
       ))}

@@ -59,4 +59,18 @@ class IsAssigneeOrTeamAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.user.role == 'ADMIN':
             return True
-        return obj.assignee == request.user and request.user in obj.project.team.members.all() 
+        return obj.assignee == request.user and request.user in obj.project.team.members.all()
+
+class IsTeamAdminOrReadOnly(permissions.BasePermission):
+    """
+    Custom permission to allow admins full access and members read-only access.
+    """
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user and request.user.role == 'ADMIN'
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return request.user in obj.members.all()
+        return request.user and request.user.role == 'ADMIN' 

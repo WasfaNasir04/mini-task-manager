@@ -1,50 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { createTask } from '../../features/tasks/tasksSlice';
-import { 
-  TextField, 
-  Button, 
-  Box, 
+import {
+  TextField,
+  Button,
+  Box,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   CircularProgress,
   Alert,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Typography,
 } from '@mui/material';
-import { teamsApi } from '../../services/teamsApi';
 
 const CreateTaskForm = ({ onClose, projectId }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [assigneeId, setAssigneeId] = useState('');
   const [priority, setPriority] = useState('Medium');
-  const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const dispatch = useDispatch();
-  const project = useSelector(state => state.projects.projects.find(p => p.id === projectId));
-
-  useEffect(() => {
-    const fetchTeamMembers = async () => {
-      try {
-        if (project?.team?.id) {
-          const response = await teamsApi.getOne(project.team.id);
-          setTeamMembers(response.data.members || []);
-        }
-      } catch (error) {
-        console.error('Error fetching team members:', error);
-        setError('Failed to fetch team members');
-      }
-    };
-
-    fetchTeamMembers();
-  }, [project]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!title.trim() || !priority) {
+      setError('Please fill all required fields');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -53,7 +42,6 @@ const CreateTaskForm = ({ onClose, projectId }) => {
         title,
         description,
         deadline,
-        assignee_id: assigneeId,
         priority,
         project_id: projectId,
         status: 'To Do'
@@ -62,100 +50,95 @@ const CreateTaskForm = ({ onClose, projectId }) => {
       await dispatch(createTask(taskData)).unwrap();
       onClose();
     } catch (err) {
+      console.error('Failed to create task:', err);
       setError(err.message || 'Failed to create task');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!project) {
-    return <div>Loading project...</div>;
+  if (!projectId) {
+    return (
+      <Box p={3}>
+        <Alert severity="error">Project ID is required.</Alert>
+      </Box>
+    );
   }
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        id="title"
-        label="Task Title"
-        name="title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        multiline
-        rows={4}
-        id="description"
-        label="Description"
-        name="description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        type="datetime-local"
-        id="deadline"
-        label="Deadline"
-        name="deadline"
-        InputLabelProps={{ shrink: true }}
-        value={deadline}
-        onChange={(e) => setDeadline(e.target.value)}
-      />
-      <FormControl fullWidth margin="normal">
-        <InputLabel id="assignee-label">Assignee</InputLabel>
-        <Select
-          labelId="assignee-label"
-          id="assignee"
-          value={assigneeId}
-          label="Assignee"
-          onChange={(e) => setAssigneeId(e.target.value)}
-          required
-        >
-          {teamMembers.map((member) => (
-            <MenuItem key={member.id} value={member.id}>
-              {member.username} ({member.role})
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-      <FormControl fullWidth margin="normal">
-        <InputLabel id="priority-label">Priority</InputLabel>
-        <Select
-          labelId="priority-label"
-          id="priority"
-          value={priority}
-          label="Priority"
-          onChange={(e) => setPriority(e.target.value)}
-          required
-        >
-          <MenuItem value="Low">Low</MenuItem>
-          <MenuItem value="Medium">Medium</MenuItem>
-          <MenuItem value="High">High</MenuItem>
-        </Select>
-      </FormControl>
-      {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      )}
-      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
+    <>
+      <DialogTitle>
+        <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#026AA7' }}>
+          Create New Task
+        </Typography>
+      </DialogTitle>
+      <DialogContent>
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            label="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            multiline
+            rows={4}
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            type="datetime-local"
+            label="Deadline"
+            InputLabelProps={{ shrink: true }}
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel>Priority</InputLabel>
+            <Select
+              value={priority}
+              label="Priority"
+              onChange={(e) => setPriority(e.target.value)}
+            >
+              <MenuItem value="Low">Low</MenuItem>
+              <MenuItem value="Medium">Medium</MenuItem>
+              <MenuItem value="High">High</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ p: 2 }}>
+        <Button onClick={onClose} color="inherit">
+          Cancel
+        </Button>
         <Button
           type="submit"
           variant="contained"
+          onClick={handleSubmit}
           disabled={loading}
+          sx={{ backgroundColor: '#026AA7', '&:hover': { backgroundColor: '#015585' } }}
         >
           {loading ? <CircularProgress size={24} /> : 'Create Task'}
         </Button>
-      </Box>
-    </Box>
+      </DialogActions>
+    </>
   );
 };
 

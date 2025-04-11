@@ -77,6 +77,7 @@ export const teamsApi = {
   delete: (id) => api.delete(`/teams/${id}/`),
   addMember: (teamId, userId) => api.post(`/teams/${teamId}/add_member/`, { user_id: userId }),
   removeMember: (teamId, userId) => api.post(`/teams/${teamId}/remove_member/`, { user_id: userId }),
+  getMembers: (teamId) => api.get(`/teams/${teamId}/members/`),
 };
 
 // Projects API

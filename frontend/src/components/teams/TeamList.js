@@ -25,6 +25,9 @@ const TeamList = ({ onCreateProject }) => {
     }
   }, [status, dispatch]);
 
+  // Show all teams (no filtering for members)
+  const filteredTeams = teams;
+
   if (status === 'loading') {
     return (
       <Box display="flex" justifyContent="center" p={3}>
@@ -41,11 +44,11 @@ const TeamList = ({ onCreateProject }) => {
     );
   }
 
-  if (!teams || teams.length === 0) {
+  if (!filteredTeams || filteredTeams.length === 0) {
     return (
       <Box p={3}>
         <Typography variant="body1" color="textSecondary">
-          No teams found. Create a team to get started.
+          No teams found.
         </Typography>
       </Box>
     );
@@ -53,7 +56,7 @@ const TeamList = ({ onCreateProject }) => {
 
   return (
     <Box>
-      {teams.map((team) => (
+      {filteredTeams.map((team) => (
         <Card key={team.id} sx={{ mb: 2 }}>
           <CardContent>
             <Typography variant="h6" component="h2">

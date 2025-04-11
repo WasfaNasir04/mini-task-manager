@@ -12,6 +12,11 @@ class Project(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='projects')
+    assigned_members = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='assigned_projects',
+        blank=True
+    )
 
     def __str__(self):
         return self.name
@@ -26,7 +31,12 @@ class Task(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
     deadline = models.DateTimeField()
-    assignee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    assignee = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        null=True,  # Allow null
+        blank=True  # Allow blank
+    )
     priority = models.CharField(max_length=6, choices=PRIORITY_CHOICES)
     status = models.CharField(max_length=20, default='To Do')  # 'To Do', 'In Progress', 'Done'
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks')

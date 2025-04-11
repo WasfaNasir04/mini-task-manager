@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
   Box, 
@@ -31,6 +31,7 @@ import {
   Notifications as NotificationsIcon,
   Dashboard as DashboardIcon,
 } from '@mui/icons-material';
+import { fetchProjects } from '../../features/projects/projectsSlice';
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -47,6 +48,11 @@ const Dashboard = () => {
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+
+  useEffect(() => {
+    dispatch(fetchProjects());
+  }, [dispatch]);
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -77,6 +83,15 @@ const Dashboard = () => {
   const handleCloseProjectDialog = () => {
     setCreateProjectOpen(false);
     setSelectedTeamId(null);
+  };
+
+  const handleCreateTask = (projectId) => {
+    if (!projectId) {
+      console.error("No project selected");
+      return;
+    }
+    setSelectedProjectId(projectId);
+    setCreateTaskOpen(true);
   };
 
   return (
@@ -143,26 +158,28 @@ const Dashboard = () => {
       }}>
         <Grid container spacing={3}>
           {/* Action Buttons */}
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setCreateTeamOpen(true)}
-                sx={{ backgroundColor: '#026AA7' }}
-              >
-                Create Team
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setCreateTaskOpen(true)}
-                sx={{ backgroundColor: '#026AA7' }}
-              >
-                Create Task
-              </Button>
-            </Box>
-          </Grid>
+          {isUserAdmin && (
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setCreateTeamOpen(true)}
+                  sx={{ backgroundColor: '#026AA7' }}
+                >
+                  Create Team
+                </Button>
+                {/* <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleCreateTask(selectedProjectId)}
+                  sx={{ backgroundColor: '#026AA7' }}
+                >
+                  Create Task
+                </Button> */}
+              </Box>
+            </Grid>
+          )}
 
           {/* Teams Section */}
           <Grid item xs={12} md={6}>
@@ -188,7 +205,9 @@ const Dashboard = () => {
             }}>
               <Typography variant="h6" sx={{ mb: 2 }}>Projects</Typography>
               <Divider sx={{ mb: 2 }} />
-              <ProjectList />
+              <ProjectList 
+                onCreateTask={handleCreateTask}
+              />
             </Paper>
           </Grid>
 
@@ -239,7 +258,10 @@ const Dashboard = () => {
         maxWidth="sm"
         fullWidth
       >
-        <CreateTaskForm onClose={() => setCreateTaskOpen(false)} />
+        <CreateTaskForm 
+          onClose={() => setCreateTaskOpen(false)} 
+          projectId={selectedProjectId}
+        />
       </Dialog>
     </Box>
   );
